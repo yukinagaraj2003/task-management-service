@@ -49,12 +49,12 @@ public class TaskService {
 
     }
 
-    public TaskResponse getTaskById(ProjectRequest request, UUID taskId) {
-        if (request.getProjectID() == null) {
+    public TaskResponse getTaskById(UUID projectId, UUID taskId) {
+        if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(request.getProjectID());
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view task for this project");
         }
@@ -62,12 +62,12 @@ public class TaskService {
         return taskMapper.convertEntityToDto(taskEntity);
     }
 
-    public List<TaskResponse> getAllTask(ProjectRequest request) {
-        if (request.getProjectID() == null) {
+    public List<TaskResponse> getAllTask(UUID projectId) {
+        if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(request.getProjectID());
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view task for this project");
         }
@@ -98,12 +98,12 @@ public class TaskService {
         return taskResponses;
     }
 
-    public List<TaskResponse> getAllTaskByUserId(UUID userId, ProjectRequest request) {
-        if (request.getProjectID() == null) {
+    public List<TaskResponse> getAllTaskByUserId(UUID userId, UUID projectId) {
+        if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(request.getProjectID());
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view task for this project");
         }
@@ -207,12 +207,12 @@ public class TaskService {
         return taskMapper.convertCommentEntityToDto(commentEntity);
 
     }
-    public CommentResponse getComment(UUID taskId, ProjectRequest projectRequest) {
-        if (projectRequest.getProjectID() == null) {
+    public CommentResponse getComment(UUID taskId, UUID projectId) {
+        if (projectId== null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(projectRequest.getProjectID());
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view comments for this project");
         }

@@ -28,15 +28,15 @@ public class TaskController {
         return new ResponseEntity<>(taskResponse, HttpStatus.CREATED);
     }
 
-    @GetMapping("/{taskId}?p")
-    public ResponseEntity<TaskResponse> getTaskById(@RequestBody ProjectRequest request, @PathVariable UUID taskId) {
-        TaskResponse taskResponse = taskService.getTaskById(request, taskId);
+    @GetMapping("/{taskId}")
+    public ResponseEntity<TaskResponse> getTaskById(@RequestParam UUID projectId, @PathVariable UUID taskId) {
+        TaskResponse taskResponse = taskService.getTaskById(projectId, taskId);
         return new ResponseEntity<>(taskResponse, HttpStatus.OK);
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> getAllTask(@RequestBody ProjectRequest request) {
-        List<TaskResponse> taskResponses = taskService.getAllTask(request);
+    public ResponseEntity<List<TaskResponse>> getAllTask(@RequestParam UUID projectId) {
+        List<TaskResponse> taskResponses = taskService.getAllTask(projectId);
         return new ResponseEntity<>(taskResponses, HttpStatus.OK);
     }
 
@@ -47,8 +47,8 @@ public class TaskController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TaskResponse>> getAllTaskByUserId(@PathVariable UUID userId, @RequestBody ProjectRequest request) {
-        List<TaskResponse> taskResponses = taskService.getAllTaskByUserId(userId, request);
+    public ResponseEntity<List<TaskResponse>> getAllTaskByUserId(@PathVariable UUID userId, @RequestParam UUID projectId) {
+        List<TaskResponse> taskResponses = taskService.getAllTaskByUserId(userId, projectId);
         return new ResponseEntity<>(taskResponses, HttpStatus.OK);
     }
 
@@ -90,8 +90,8 @@ public class TaskController {
         return new ResponseEntity<>(response,HttpStatus.CREATED);
     }
     @GetMapping("/{taskId}/comments")
-    public ResponseEntity<CommentResponse> getComment(@PathVariable UUID taskId,@RequestBody ProjectRequest request){
-        CommentResponse response= taskService.getComment(taskId,request);
+    public ResponseEntity<CommentResponse> getComment(@PathVariable UUID taskId,@RequestParam UUID projectId){
+        CommentResponse response= taskService.getComment(taskId,projectId);
         return new ResponseEntity<>(response,HttpStatus.OK);
     }
     @DeleteMapping("/{id}/comments/{commentId}")
