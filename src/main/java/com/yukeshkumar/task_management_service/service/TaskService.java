@@ -50,36 +50,45 @@ public class TaskService {
     }
 
     public TaskResponse getTaskById(UUID projectId, UUID taskId) {
+
         if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
-
         }
+
         String role = projectClient.getUserRoleForProject(projectId);
+
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view task for this project");
         }
-        TaskEntity taskEntity = taskRepository.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+
+        TaskEntity taskEntity = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
         return taskMapper.convertEntityToDto(taskEntity);
     }
 
     public List<TaskResponse> getAllTask(UUID projectId) {
+
         if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
-
         }
+
         String role = projectClient.getUserRoleForProject(projectId);
+
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to view task for this project");
         }
-        List<TaskEntity> taskEntities = taskRepository.findAll();
+
+        List<TaskEntity> taskEntities = taskRepository.findByProjectId(projectId);
+
         List<TaskResponse> taskResponses = new ArrayList<>();
+
         for (TaskEntity taskEntity : taskEntities) {
             taskResponses.add(taskMapper.convertEntityToDto(taskEntity));
-
         }
+
         return taskResponses;
     }
-
     public List<TaskResponse> getAllTaskByProjectId(UUID projectId) {
         if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
@@ -118,24 +127,33 @@ public class TaskService {
     }
 
     public TaskResponse updateTask(TaskRequest request, UUID userId, UUID taskId) {
+
         if (request.getProjectId() == null) {
             throw new BadRequestException("ProjectId is required");
-
         }
+
         String role = projectClient.getUserRoleForProject(request.getProjectId());
+
         if (!role.equals("OWNER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to update task for this project");
         }
-        TaskEntity taskEntity = taskRepository.findById(taskId).orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-        if (!taskEntity.getCreatedBy().equals(userId)&& !taskEntity.getAssignedTo().equals(request.getAssignedTo())) {
+
+        TaskEntity taskEntity = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        if (taskEntity.getAssignedTo() != null &&
+                !taskEntity.getCreatedBy().equals(userId) &&
+                !taskEntity.getAssignedTo().equals(userId)) {
             throw new AccessDeniedException("User not authorized to update this task");
         }
+
         TaskEntity updatedTask = taskMapper.updateEntityFromDto(request, taskEntity);
         updatedTask.setCreatedBy(userId);
         updatedTask.setProjectId(request.getProjectId());
-        taskRepository.save(updatedTask);
-        return taskMapper.convertEntityToDto(updatedTask);
 
+        taskRepository.save(updatedTask);
+
+        return taskMapper.convertEntityToDto(updatedTask);
     }
 
     public void updateTaskStatus(UUID taskId, UpdateStatusAndPriority update, UUID userId) {
@@ -173,12 +191,12 @@ public class TaskService {
         taskRepository.delete(taskEntity);
     }
 
-    public void assignTaskToUser(AssignTaskRequest request, UUID taskId, ProjectRequest projectRequest) {
-        if (projectRequest.getProjectID() == null) {
+    public void assignTaskToUser(AssignTaskRequest request, UUID taskId, UUID projectId) {
+        if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(projectRequest.getProjectID());
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to assign task for this project");
         }
@@ -187,18 +205,22 @@ public class TaskService {
         taskRepository.save(taskEntity);
     }
 
-    public CommentResponse addCommentToTask(CommentRequest request, UUID taskId,  UUID userId) {
-        if (request.getProjectId() == null) {
+    public CommentResponse addCommentToTask(CommentRequest request, UUID taskId,  UUID projectId,UUID userId) {
+        if (projectId == null) {
             throw new BadRequestException("ProjectId is required");
 
         }
-        String role = projectClient.getUserRoleForProject(request.getProjectId());
+        System.out.println("PROJECT ID SENT: " + projectId);
+        System.out.println("USER ID: " + userId);
+        String role = projectClient.getUserRoleForProject(projectId);
         if (!role.equals("OWNER") && !role.equals("MEMBER") && !role.equals("MAINTAINER")) {
             throw new AccessDeniedException("User not authorized to comment on task for this project");
         }
+        System.out.println("TASK ID RECEIVED: [" + taskId + "]");
         if(!taskRepository.existsById(taskId)){
             throw new ForbiddenOperationException("Task not found");
         }
+
         TaskCommentEntity commentEntity = new TaskCommentEntity();
         commentEntity.setTaskId(taskId);
         commentEntity.setComment(request.getComment());
@@ -207,17 +229,24 @@ public class TaskService {
         return taskMapper.convertCommentEntityToDto(commentEntity);
 
     }
-    public CommentResponse getComment(UUID taskId, UUID projectId) {
-        if (projectId== null) {
-            throw new BadRequestException("ProjectId is required");
+    public List<CommentResponse> getComment(UUID taskId, UUID projectId) {
 
+        if (projectId == null) {
+            throw new BadRequestException("ProjectId is required");
         }
+
         String role = projectClient.getUserRoleForProject(projectId);
+
         if (!role.equals("OWNER") && !role.equals("MAINTAINER")) {
-            throw new AccessDeniedException("User not authorized to view comments for this project");
+            throw new AccessDeniedException("User not authorized");
         }
-        TaskCommentEntity commentEntity = taskCommentRepository.findByTaskId(taskId).orElseThrow(() -> new ResourceNotFoundException("Comments not found"));
-        return taskMapper.convertCommentEntityToDto(commentEntity);
+
+        List<TaskCommentEntity> commentEntities =
+                taskCommentRepository.findByTaskId(taskId);
+
+        return commentEntities.stream()
+                .map(taskMapper::convertCommentEntityToDto)
+                .toList();
     }
     public void deleteComment(UUID taskId, UUID commentId, ProjectRequest projectRequest, UUID userId) {
         if (projectRequest.getProjectID() == null) {

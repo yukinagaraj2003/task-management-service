@@ -5,8 +5,17 @@ import java.util.UUID;
 public class CommentRequest {
     private String comment;
     private UUID projectId;
+
     public CommentRequest(){
 
+    }
+
+    public UUID getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(UUID projectId) {
+        this.projectId = projectId;
     }
 
     public String getComment() {
@@ -17,11 +26,5 @@ public class CommentRequest {
         this.comment = comment;
     }
 
-    public UUID getProjectId() {
-        return projectId;
-    }
 
-    public void setProjectId(UUID projectId) {
-        this.projectId = projectId;
-    }
 }

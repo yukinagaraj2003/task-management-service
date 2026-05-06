@@ -134,8 +134,7 @@ class TaskServiceTest {
 
     @Test
     void getAllTask_Success() {
-        List<TaskEntity> taskEntities = Arrays.asList(taskEntity);
-        List<TaskResponse> taskResponses = Arrays.asList(taskResponse);
+        List<TaskEntity> taskEntities = List.of(taskEntity);
 
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
         when(taskRepository.findAll()).thenReturn(taskEntities);
@@ -145,7 +144,7 @@ class TaskServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(taskResponse.getId(), result.get(0).getId());
+        assertEquals(taskResponse.getId(), result.getFirst().getId());
     }
 
     @Test
@@ -162,8 +161,7 @@ class TaskServiceTest {
 
     @Test
     void getAllTaskByProjectId_Success() {
-        List<TaskEntity> taskEntities = Arrays.asList(taskEntity);
-        List<TaskResponse> taskResponses = Arrays.asList(taskResponse);
+        List<TaskEntity> taskEntities = List.of(taskEntity);
 
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
         when(taskRepository.findByProjectId(projectId)).thenReturn(taskEntities);
@@ -177,8 +175,7 @@ class TaskServiceTest {
 
     @Test
     void getAllTaskByUserId_Success() {
-        List<TaskEntity> taskEntities = Arrays.asList(taskEntity);
-        List<TaskResponse> taskResponses = Arrays.asList(taskResponse);
+        List<TaskEntity> taskEntities = List.of(taskEntity);
 
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
         when(taskRepository.findByAssignedTo(userId)).thenReturn(taskEntities);
@@ -287,13 +284,11 @@ class TaskServiceTest {
     void assignTaskToUser_Success() {
         AssignTaskRequest assignRequest = new AssignTaskRequest();
         assignRequest.setUserId(userId);
-        ProjectRequest projectRequest = new ProjectRequest();
-        projectRequest.setProjectID(projectId);
 
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(taskEntity));
 
-        taskService.assignTaskToUser(assignRequest, taskId, projectRequest);
+        taskService.assignTaskToUser(assignRequest, taskId, projectId);
 
         verify(taskRepository).save(taskEntity);
         assertEquals(userId, taskEntity.getAssignedTo());
@@ -337,23 +332,28 @@ class TaskServiceTest {
     @Test
     void getComment_Success() {
         TaskCommentEntity commentEntity = new TaskCommentEntity();
+        commentEntity.setTaskId(taskId);
         CommentResponse commentResponse = new CommentResponse();
 
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
-        when(taskCommentRepository.findByTaskId(taskId)).thenReturn(Optional.of(commentEntity));
+        when(taskCommentRepository.findAll()).thenReturn(List.of(commentEntity));
         when(taskMapper.convertCommentEntityToDto(commentEntity)).thenReturn(commentResponse);
 
-        CommentResponse result = taskService.getComment(taskId, projectId);
+        List<CommentResponse> result = taskService.getComment(taskId, projectId);
 
         assertNotNull(result);
+        assertTrue(result.size() > 0);
     }
 
     @Test
-    void getComment_CommentsNotFound_ThrowsResourceNotFoundException() {
+    void getComment_CommentsNotFound_ReturnsEmptyList() {
         when(projectClient.getUserRoleForProject(projectId)).thenReturn("OWNER");
-        when(taskCommentRepository.findByTaskId(taskId)).thenReturn(Optional.empty());
+        when(taskCommentRepository.findAll()).thenReturn(List.of());
 
-        assertThrows(ResourceNotFoundException.class, () -> taskService.getComment(taskId, projectId));
+        List<CommentResponse> result = taskService.getComment(taskId, projectId);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test

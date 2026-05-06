@@ -7,11 +7,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -24,34 +24,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final UUID userId;
-        final String role;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
+        String authHeader = request.getHeader("Authorization");
 
-        jwt = authHeader.substring(7);
-        try {
-            if (jwtUtility.validateToken(jwt)) {
-                JwtUtility.UserDetails userDetails = jwtUtility.extractUserDetails(jwt);
-                userId = userDetails.getUserId();
-                role = userDetails.getRole();
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userId, jwt, java.util.List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                String token = authHeader.substring(7);
+
+                try {
+                    if (!jwtUtility.isValid(token)) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        return;
+                    }
+
+                    UUID userId = jwtUtility.getUserId(token);
+                    String role = jwtUtility.getRole(token);
+
+                    // normalize role
+                    if (role == null) role = "ROLE_USER";
+                    if (!role.startsWith("ROLE_")) role = "ROLE_" + role;
+
+                    // ✅ IMPORTANT: principal = STRING ONLY (production safe)
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userId.toString(),
+                                    token,
+                                    List.of(new SimpleGrantedAuthority(role))
+                            );
+
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+
+                } catch (Exception ex) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+
+                filterChain.doFilter(request, response);
             }
-        } catch (Exception e) {
-
         }
-
-        filterChain.doFilter(request, response);
-    }
-}

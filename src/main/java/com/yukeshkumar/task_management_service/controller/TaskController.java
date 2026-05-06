@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/tasks")
+@CrossOrigin(origins = "http://localhost:5173")
 public class TaskController {
     private final TaskService taskService;
 
@@ -23,13 +24,17 @@ public class TaskController {
     @PostMapping
     public ResponseEntity<TaskResponse> createTask(@RequestBody TaskRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = UUID.fromString(authentication.getName());
         TaskResponse taskResponse = taskService.createTask(request, userId);
+        System.out.println("AssignedTo from request: " + request.getAssignedTo());
         return new ResponseEntity<>(taskResponse, HttpStatus.CREATED);
     }
 
     @GetMapping("/{taskId}")
-    public ResponseEntity<TaskResponse> getTaskById(@RequestParam UUID projectId, @PathVariable UUID taskId) {
+    public ResponseEntity<TaskResponse> getTaskById(
+            @RequestParam UUID projectId,
+            @PathVariable UUID taskId
+    ) {
         TaskResponse taskResponse = taskService.getTaskById(projectId, taskId);
         return new ResponseEntity<>(taskResponse, HttpStatus.OK);
     }
@@ -40,7 +45,7 @@ public class TaskController {
         return new ResponseEntity<>(taskResponses, HttpStatus.OK);
     }
 
-    @GetMapping("/{projectId}")
+    @GetMapping("project/{projectId}")
     public ResponseEntity<List<TaskResponse>> getAllTaskByProjectId(@PathVariable UUID projectId) {
         List<TaskResponse> taskResponses = taskService.getAllTaskByProjectId(projectId);
         return new ResponseEntity<>(taskResponses, HttpStatus.OK);
@@ -51,55 +56,70 @@ public class TaskController {
         List<TaskResponse> taskResponses = taskService.getAllTaskByUserId(userId, projectId);
         return new ResponseEntity<>(taskResponses, HttpStatus.OK);
     }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<TaskResponse> updateTask(@RequestBody TaskRequest request, @PathVariable UUID taskId) {
+    @PutMapping("/{taskId}")
+    public ResponseEntity<TaskResponse> updateTask(
+            @RequestBody TaskRequest request,
+            @PathVariable UUID taskId
+    ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
-        TaskResponse taskResponse = taskService.updateTask(request, taskId, userId);
+        UUID userId = UUID.fromString(authentication.getName());
+
+        TaskResponse taskResponse = taskService.updateTask(request, userId, taskId);
         return new ResponseEntity<>(taskResponse, HttpStatus.OK);
     }
 
     @PatchMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(@RequestBody UpdateStatusAndPriority request, @PathVariable UUID taskId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = UUID.fromString(authentication.getName());
         taskService.updateTaskStatus(taskId,request,userId);
         return new ResponseEntity<>(HttpStatus.OK);
 
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{taskId}")
     public ResponseEntity<?> deleteTask(@PathVariable UUID taskId, @RequestBody ProjectRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = UUID.fromString(authentication.getName());
         taskService.deleteTask(taskId, request,userId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @PatchMapping("/{id}/assign")
-    public ResponseEntity<?> assignTaskToUser(@RequestBody AssignTaskRequest request, @PathVariable UUID taskId, @RequestBody ProjectRequest projectRequest) {
-        taskService.assignTaskToUser(request, taskId, projectRequest);
+    @PatchMapping("/projects/{projectId}/tasks/{taskId}/assign")
+    public ResponseEntity<?> assignTaskToUser(@RequestBody AssignTaskRequest request, @PathVariable UUID taskId, @PathVariable UUID projectId) {
+        taskService.assignTaskToUser(request, taskId,projectId );
         return new ResponseEntity<>(HttpStatus.OK);
     }
     @PostMapping("/{taskId}/comments")
-    public ResponseEntity<CommentResponse> addCommentToTask(@RequestBody CommentRequest request, @PathVariable UUID taskId) {
+    public ResponseEntity<CommentResponse> addCommentToTask(
+            @RequestBody CommentRequest request,
+            @PathVariable UUID taskId,
+            @RequestParam UUID projectId
+    ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
-       CommentResponse response= taskService.addCommentToTask(request, taskId,userId);
-        return new ResponseEntity<>(response,HttpStatus.CREATED);
+        UUID userId = UUID.fromString(authentication.getName());
+
+        CommentResponse response = taskService.addCommentToTask(request, taskId, projectId, userId);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
     @GetMapping("/{taskId}/comments")
-    public ResponseEntity<CommentResponse> getComment(@PathVariable UUID taskId,@RequestParam UUID projectId){
-        CommentResponse response= taskService.getComment(taskId,projectId);
-        return new ResponseEntity<>(response,HttpStatus.OK);
+    public ResponseEntity<List<CommentResponse>> getComment(
+            @PathVariable("taskId") UUID taskId,
+            @RequestParam(name = "projectId", required = true) UUID projectId
+    ) {
+        List<CommentResponse> response = taskService.getComment(taskId, projectId);
+        return ResponseEntity.ok(response);
     }
-    @DeleteMapping("/{id}/comments/{commentId}")
-    public ResponseEntity<?> deleteComment(@PathVariable UUID taskId,@PathVariable UUID commentId,@RequestBody ProjectRequest request) {
+    @DeleteMapping("/{taskId}/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(
+            @PathVariable UUID taskId,
+            @PathVariable UUID commentId,
+            @RequestBody ProjectRequest request
+    ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = UUID.fromString(authentication.getName());
+
         taskService.deleteComment(taskId, commentId, request, userId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-
 }

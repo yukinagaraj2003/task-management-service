@@ -5,10 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
-
-@FeignClient(name = "project-management-service", url = "http://localhost:8082/projects")
+@FeignClient(name = "project-service-management", url = "http://localhost:8082/projects")
 public interface ProjectClient {
+
     @GetMapping("/{projectId}/role")
     String getUserRoleForProject(@PathVariable UUID projectId);
-
 }

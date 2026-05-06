@@ -17,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -264,6 +263,7 @@ class TaskIntegrationTest {
         taskService.updateTaskStatus(taskId, update1, userId);
 
         TaskEntity task1 = taskRepository.findById(taskId).orElse(null);
+        assertNotNull(task1);
         assertEquals(TaskStatus.IN_PROGRESS, task1.getStatus());
 
         // Second transition: IN_PROGRESS -> DONE
@@ -273,6 +273,7 @@ class TaskIntegrationTest {
         taskService.updateTaskStatus(taskId, update2, userId);
 
         TaskEntity task2 = taskRepository.findById(taskId).orElse(null);
+        assertNotNull(task2);
         assertEquals(TaskStatus.DONE, task2.getStatus());
     }
 
@@ -314,10 +315,7 @@ class TaskIntegrationTest {
         AssignTaskRequest assignRequest = new AssignTaskRequest();
         assignRequest.setUserId(assigneeId);
 
-        ProjectRequest projectRequest = new ProjectRequest();
-        projectRequest.setProjectID(projectId);
-
-        taskService.assignTaskToUser(assignRequest, taskId, projectRequest);
+        taskService.assignTaskToUser(assignRequest, taskId, projectId);
 
         TaskEntity assignedTask = taskRepository.findById(taskId).orElse(null);
         assertNotNull(assignedTask);
@@ -340,10 +338,7 @@ class TaskIntegrationTest {
         AssignTaskRequest assignRequest = new AssignTaskRequest();
         assignRequest.setUserId(secondAssignee);
 
-        ProjectRequest projectRequest = new ProjectRequest();
-        projectRequest.setProjectID(projectId);
-
-        taskService.assignTaskToUser(assignRequest, taskId, projectRequest);
+        taskService.assignTaskToUser(assignRequest, taskId, projectId);
 
         TaskEntity reassignedTask = taskRepository.findById(taskId).orElse(null);
         assertEquals(secondAssignee, reassignedTask.getAssignedTo());
@@ -366,7 +361,7 @@ class TaskIntegrationTest {
         commentRequest.setProjectId(projectId);
         commentRequest.setComment("Integration Test Comment");
 
-        CommentResponse response = taskService.addCommentToTask(commentRequest, taskId, userId);
+        CommentResponse response = taskService.addCommentToTask(commentRequest, taskId, userId,projectId);
 
         assertNotNull(response);
         assertTrue(taskCommentRepository.existsById(response.getId()));
@@ -394,10 +389,11 @@ class TaskIntegrationTest {
         commentEntity.setCommentedBy(userId);
         taskCommentRepository.save(commentEntity);
 
-        CommentResponse response = taskService.getComment(taskId, projectId);
+        List<CommentResponse> response = taskService.getComment(taskId, projectId);
 
         assertNotNull(response);
-        assertEquals("Retrieve Me", response.getComment());
+        assertTrue(response.size() > 0);
+        assertEquals("Retrieve Me", response.getFirst().getComment());
     }
 
     @Test
@@ -445,8 +441,8 @@ class TaskIntegrationTest {
         comment2.setProjectId(projectId);
         comment2.setComment("Second Comment");
 
-        CommentResponse response1 = taskService.addCommentToTask(comment1, taskId, userId);
-        CommentResponse response2 = taskService.addCommentToTask(comment2, taskId, userId);
+        CommentResponse response1 = taskService.addCommentToTask(comment1, taskId, userId,projectId);
+        CommentResponse response2 = taskService.addCommentToTask(comment2, taskId, userId,projectId);
 
         assertNotNull(response1.getId());
         assertNotNull(response2.getId());
@@ -472,20 +468,18 @@ class TaskIntegrationTest {
         CommentRequest commentRequest = new CommentRequest();
         commentRequest.setProjectId(projectId);
         commentRequest.setComment("Workflow Comment");
-        CommentResponse commentResponse = taskService.addCommentToTask(commentRequest, createdTaskId, userId);
+        CommentResponse commentResponse = taskService.addCommentToTask(commentRequest, createdTaskId, userId,projectId);
         assertTrue(taskCommentRepository.existsById(commentResponse.getId()));
 
         // 4. Assign task
         UUID assigneeId = UUID.randomUUID();
         AssignTaskRequest assignRequest = new AssignTaskRequest();
         assignRequest.setUserId(assigneeId);
-        ProjectRequest projectRequest = new ProjectRequest();
-        projectRequest.setProjectID(projectId);
-        taskService.assignTaskToUser(assignRequest, createdTaskId, projectRequest);
+        taskService.assignTaskToUser(assignRequest, createdTaskId, projectId);
 
         // 5. Update status
         assignRequest.setUserId(userId);
-        taskService.assignTaskToUser(assignRequest, createdTaskId, projectRequest);
+        taskService.assignTaskToUser(assignRequest, createdTaskId, projectId);
         
         UpdateStatusAndPriority updateRequest = new UpdateStatusAndPriority();
         updateRequest.setProjectId(projectId);
@@ -499,6 +493,8 @@ class TaskIntegrationTest {
         assertEquals(userId, verifyTask.getAssignedTo());
 
         // 7. Delete task
+        ProjectRequest projectRequest = new ProjectRequest();
+        projectRequest.setProjectID(projectId);
         taskService.deleteTask(createdTaskId, projectRequest, userId);
         assertFalse(taskRepository.existsById(createdTaskId));
     }
